@@ -35,5 +35,5 @@ while :; do
     done
 
     tput rc  # Restore cursor position
-    sleep 0.05  # Adjust sleep time for desired rain speed
+    sleep 0.1  # Adjust sleep time for desired rain speed
 done
