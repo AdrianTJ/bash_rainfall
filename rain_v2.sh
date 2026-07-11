@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Improved Tiny Rain Simulator - Final Stability Fix
-# Focus: Maximum compatibility and zero syntax errors.
+# Tiny Rain Simulator v2: falling rain with splashes and puddles that
+# gradually accumulate along the bottom row.
+# Usage: ./rain_v2.sh [--thunder]
 
 # --- Configuration ---
 COLOR_RAIN="\033[34m"     # Blue
@@ -13,8 +14,9 @@ COLOR_THUNDER="\033[107m" # Bright White Background
 CHARACTERS=("." "," ":" "i" "|")
 SPLASH_CHAR="v"
 
-SPEED=0.05
-DENSITY=20 
+SPEED=0.05        # Seconds between frames
+DENSITY=20        # 1-in-N chance of a raindrop per cell (lower = more rain)
+PUDDLE_FULL=10    # Drops a column must collect before its puddle shows as ~
 
 # Global State
 cols=0
@@ -27,11 +29,12 @@ THUNDER_ENABLED=false
 
 # Get terminal dimensions and re-initialize state
 update_dimensions() {
+    local i empty_line
     cols=$(tput cols)
     rows=$(tput lines)
     buffer=()
     puddles=()
-    local empty_line=$(printf "%${cols}s" "")
+    empty_line=$(printf "%${cols}s" "")
     for ((i=0; i<rows; i++)); do
         buffer[i]="$empty_line"
     done
@@ -40,17 +43,16 @@ update_dimensions() {
     done
 }
 
-# Cleanup on exit
+# Restore the terminal on exit
 cleanup() {
     tput cnorm # Show cursor
-    echo -ne "\033[0m"
+    printf "%b" "$COLOR_RESET"
     clear
-    exit
 }
 
 # Generate a single line of raw rain characters
 generate_line() {
-    local new_line=""
+    local j new_line=""
     for ((j=0; j<cols; j++)); do
         if ((RANDOM % DENSITY == 0)); then
             new_line+="${CHARACTERS[$RANDOM % ${#CHARACTERS[@]}]}"
@@ -58,30 +60,31 @@ generate_line() {
             new_line+=" "
         fi
     done
-    echo "$new_line"
+    printf "%s\n" "$new_line"
 }
 
 # Shift buffer and handle splashes and puddles
 update_buffer() {
+    local i j char last_row new_last_row=""
+
     # Shift buffer down
     for ((i=rows-1; i>0; i--)); do
         buffer[i]="${buffer[i-1]}"
     done
 
     # Splash & Puddle Logic
-    local last_row="${buffer[rows-1]}"
-    local new_last_row=""
-    
+    last_row="${buffer[rows-1]}"
+
     for ((j=0; j<cols; j++)); do
         char="${last_row:$j:1}"
-        if [[ "$char" =~ [.,:i|] ]]; then
+        if [[ "$char" == [.,:i\|] ]]; then
             # Increment puddle accumulation at this column
             ((puddles[j]++))
             # Show splash for one frame
             new_last_row+="$SPLASH_CHAR"
         else
             # If puddle exists here, show puddle character
-            if (( puddles[j] > 10 )); then
+            if (( puddles[j] > PUDDLE_FULL )); then
                 new_last_row+="~"
             elif (( puddles[j] > 0 )); then
                 new_last_row+="_"
@@ -91,26 +94,29 @@ update_buffer() {
         fi
     done
     buffer[rows-1]="$new_last_row"
-    
+
     # New top line
     buffer[0]=$(generate_line)
 }
 
 # Render the current buffer with optimized coloring
 draw_frame() {
+    local i line frame=""
+
     # Move cursor to top-left
     printf "\033[H"
-    
-    # Thunder flash
+
+    # Thunder flash: fill the screen with a bright background for a moment,
+    # then reset so the flash doesn't linger on blank lines of the next frame
     if [[ "$THUNDER_ENABLED" == "true" ]] && (( RANDOM % 80 == 0 )); then
-        printf "\033[107m\033[2J"
+        printf "%b\033[2J" "$COLOR_THUNDER"
         sleep 0.02
+        printf "%b\033[H" "$COLOR_RESET"
     fi
 
-    local frame=""
     for ((i=0; i<rows; i++)); do
-        local line="${buffer[i]}"
-        
+        line="${buffer[i]}"
+
         # Fast coloring using pattern replacement
         if [[ "$line" == *[![:space:]]* ]]; then
             line="${line//./${COLOR_RAIN}.}"
@@ -123,7 +129,7 @@ draw_frame() {
             line="${line//_/${COLOR_RAIN}_}"
             line="${line}${COLOR_RESET}"
         fi
-        
+
         # Avoid newline on the very last row to prevent scrolling
         if (( i < rows - 1 )); then
             frame+="$line\n"
@@ -131,7 +137,7 @@ draw_frame() {
             frame+="$line"
         fi
     done
-    
+
     printf "%b" "$frame"
 }
 
@@ -142,15 +148,19 @@ main() {
     fi
 
     trap update_dimensions SIGWINCH
-    trap cleanup SIGINT EXIT
+    # Run cleanup once on any exit; the INT/TERM traps just convert the
+    # signal into an exit with the conventional code, which fires EXIT
+    trap cleanup EXIT
+    trap 'exit 130' SIGINT
+    trap 'exit 143' SIGTERM
 
-    tput civis
+    tput civis # Hide cursor
     update_dimensions
 
     while :; do
         update_buffer
         draw_frame
-        sleep $SPEED
+        sleep "$SPEED"
     done
 }
 
