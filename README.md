@@ -1,37 +1,53 @@
-### Tiny Rain Simulator
+# Tiny Rain Simulator
 
-**Description:**
-A lightweight Bash script that simulates a rain effect in your terminal. This improved version features smooth animations, color depth, and robust terminal handling.
+A lightweight Bash script that simulates a rain effect in your terminal, featuring smooth animations, color depth, and robust terminal handling.
 
-**Key Features:**
-- **Visual Depth:** Uses varying blue tones and a mix of characters (`.`, `,`, `'`, `|`, `:`) to create a more immersive effect.
+## Versions
+
+- **`rain_v1.sh`** — Falling rain with one-frame splashes (`v`) where drops hit the bottom row.
+- **`rain_v2.sh`** — Everything in v1, plus puddles that gradually accumulate along the bottom row (`_` grows into `~` as more drops land).
+
+## Key Features
+
+- **Visual Depth:** Uses varying blue tones and a mix of characters (`.`, `,`, `:`, `i`, `|`) to create a more immersive effect.
 - **Graceful Exit:** Cleans up the terminal, restores the cursor, and resets colors when you stop the script.
 - **Dynamic Resizing:** Automatically adapts to terminal window resizing.
 - **Minimal Flicker:** Uses efficient cursor positioning for a smoother experience.
 - **Thunder Effect:** Optional lightning flashes for a stormier feel.
 
-**Usage:**
-1. **Save the script:** Save the code as `rain.sh`.
-2. **Make it executable:**
-   ```bash
-   chmod +x rain.sh
-   ```
-3. **Run the script:**
-   ```bash
-   ./rain.sh
-   ```
-   To enable thunder (lightning flashes):
-   ```bash
-   ./rain.sh --thunder
-   # OR
-   THUNDER=true ./rain.sh
-   ```
-   Press `Ctrl+C` to stop the simulation.
+## Usage
 
-**Customization:**
-Open `rain.sh` to adjust these variables at the top of the file:
-- `SPEED`: Change the sleep time (default `0.05`) to speed up or slow down the rain.
-- `DENSITY`: Adjust the frequency of raindrops (lower values = more rain).
-- `COLOR_RAIN`: Change the ANSI color codes to customize the look (e.g., green for a Matrix effect).
+```bash
+./rain_v2.sh
+```
 
-**Note:** This script is designed for standard terminal environments. It requires `tput` (included in most Linux/macOS distributions).
+To enable thunder (lightning flashes):
+
+```bash
+./rain_v2.sh --thunder
+# OR
+THUNDER=true ./rain_v2.sh
+```
+
+Press `Ctrl+C` to stop the simulation.
+
+## Customization
+
+Adjust these variables at the top of the script:
+
+- `SPEED`: Seconds between frames (default `0.05`) — lower is faster rain.
+- `DENSITY`: Frequency of raindrops (lower values = more rain).
+- `COLOR_RAIN`: ANSI color code for the rain (e.g., green for a Matrix effect).
+- `PUDDLE_FULL` (v2 only): Drops a column must collect before its puddle deepens from `_` to `~`.
+
+## Tests
+
+```bash
+./run_tests.sh
+```
+
+Runs every `tests/test_*.sh` suite and reports an aggregate result.
+
+## Requirements
+
+Bash and `tput` (part of ncurses, included in most Linux/macOS distributions).

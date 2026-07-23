@@ -19,14 +19,12 @@ test_puddle_accumulation() {
     # Reset puddles for clean test
     for ((j=0; j<cols; j++)); do puddles[j]=0; done
     
-    # Simulate a raindrop hitting the ground at index 3
+    # Simulate a raindrop hitting the ground at index 3. update_buffer
+    # shifts everything down one row first, so the drop placed one row
+    # above the ground lands on buffer[rows-1] and is counted there.
     buffer[rows-2]="   .      " # One row above the ground
     update_buffer
-    
-    # Check if puddle at index 3 was incremented
-    # Note: update_buffer in v2 should check buffer[rows-1] after shifting
-    # Wait, in rain_v1, update_buffer shifts THEN processes buffer[rows-1].
-    
+
     if [[ "${puddles[3]}" -eq 1 ]]; then
         echo "PASS"
     else
@@ -35,5 +33,28 @@ test_puddle_accumulation() {
     fi
 }
 
+test_puddle_rendering() {
+    echo -n "Testing puddle rendering thresholds... "
+    update_dimensions
+    cols=3
+    rows=3
+    for ((j=0; j<cols; j++)); do puddles[j]=0; done
+
+    # Column 0: no puddle, column 1: shallow puddle, column 2: full puddle
+    puddles[1]=1
+    puddles[2]=$((PUDDLE_FULL + 1))
+    buffer[rows-2]="   " # No incoming drops
+    update_buffer
+
+    local ground="${buffer[rows-1]}"
+    if [[ "$ground" == " _~" ]]; then
+        echo "PASS"
+    else
+        echo "FAIL (ground='$ground')"
+        exit 1
+    fi
+}
+
 echo "Running Tiny Rainfall v2 Tests..."
 test_puddle_accumulation
+test_puddle_rendering
